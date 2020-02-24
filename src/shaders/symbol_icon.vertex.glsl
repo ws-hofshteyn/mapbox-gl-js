@@ -89,7 +89,9 @@ void main() {
 
     // Symbols might end up being behind the camera. Modify z-value to be out of visible bounds
     // if this is the case, otherwise ignore depth. -1.1 is safely out of the visible depth range [-1, 1]
-    gl_Position.z = mix(-1.1 * gl_Position.w, gl_Position.z, float(projected_pos.w > 0.0));
+    if (projected_pos.w <= 0.0) {
+        gl_Position.z = -1.1 * gl_Position.w;
+    }
 
     v_tex = a_tex / u_texsize;
     vec2 fade_opacity = unpack_opacity(a_fade_opacity);
