@@ -844,7 +844,7 @@ class Map extends Camera {
      * var isZooming = map.isZooming();
      */
     isZooming(): boolean {
-        return this._zooming;
+        return this._zooming || this.handlers.isZooming();
     }
 
     /**
@@ -853,7 +853,7 @@ class Map extends Camera {
      * map.isRotating();
      */
     isRotating(): boolean {
-        return this._rotating;
+        return this._rotating || this.handlers.isRotating();
     }
 
     _createDelegatedListener(type: MapEvent, layerId: any, listener: any) {

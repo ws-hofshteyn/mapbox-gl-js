@@ -218,6 +218,13 @@ class HandlerManager {
         return false;
     }
 
+    isZooming() {
+        return !!this.eventsInProgress.zoom;
+    }
+    isRotating() {
+        return !!this.eventsInProgress.rotate;
+    }
+
     blockedByActive(activeHandlers: { [string]: Handler }, allowed: Array<string>, myName: string) { 
         for (const name in activeHandlers) {
             if (name === myName) continue;
