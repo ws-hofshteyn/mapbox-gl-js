@@ -40,7 +40,7 @@ export default class MousePitchHandler {
         if (!this._lastPoint) return;
 
         const yDelta = this._lastPoint.y - point.y;
-        if (Math.abs(yDelta) < this._clickTolerance) return 
+        if (!this._active && Math.abs(yDelta) < this._clickTolerance) return ;
 
         this._active = true;
 

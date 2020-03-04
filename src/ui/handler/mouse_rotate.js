@@ -41,7 +41,7 @@ export default class MouseRotateHandler  {
 
         const xDelta = this._lastPoint.x - point.x;
 
-        if (Math.abs(xDelta) < this._clickTolerance) return;
+        if (!this._active && Math.abs(xDelta) < this._clickTolerance) return;
 
         this._active = true;
         const bearingDelta = (this._lastPoint.x - point.x) * -0.8;
