@@ -134,7 +134,7 @@ class HandlerManager {
         const el = this._map.getCanvasContainer();
         const boxZoom = this._map.boxZoom = new BoxZoomHandler(this._map, this.options);
         this.add('boxZoom', boxZoom);
-        this.add('tapzoom', new TapZoomHandler());
+        this.add('tapZoom', new TapZoomHandler());
         this.add('swipeZoom', new SwipeZoomHandler());
         this.add('clickZoom', new ClickZoomHandler());
         const mouseRotate = new MouseRotateHandler(this.options);

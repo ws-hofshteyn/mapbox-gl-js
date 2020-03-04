@@ -136,6 +136,7 @@ export default class HandlerInertia {
             easeOptions.around = last ? this._map.unproject(last) : this._map.getCenter();
         }
 
+        this.clear();
         this._map.easeTo(extend(easeOptions, {
             noMoveStart: true
         }), { originalEvent });
