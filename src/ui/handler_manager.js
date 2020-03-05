@@ -6,6 +6,7 @@ import DOM from '../util/dom';
 import browser from '../util/browser';
 import type Map from './map';
 import HandlerInertia from './handler_inertia';
+import {MapEventHandler, BlockableMapEventHandler} from './handler/map_event';
 import BoxZoomHandler from './handler/box_zoom';
 import TapZoomHandler from './handler/tap_zoom';
 import MousePanHandler from './handler/mouse_pan';
@@ -111,29 +112,37 @@ class HandlerManager {
         // passive, binding with passive: true causes iOS not to respect
         // e.preventDefault() in _other_ handlers, even if they are non-passive
         // (see https://bugs.webkit.org/show_bug.cgi?id=184251)
-        this.addTouchListener('touchstart', {passive: false});
-        this.addTouchListener('touchmove', {passive: false});
-        this.addTouchListener('touchend');
-        this.addTouchListener('touchcancel');
+        this._addListener(this._el, 'touchstart', {passive: false});
+        this._addListener(this._el, 'touchmove', {passive: false});
+        this._addListener(this._el, 'touchend');
+        this._addListener(this._el, 'touchcancel');
 
-        this.addMouseListener('mousedown');
-        this.addMouseListener('mousemove', {}, window);
-        this.addMouseListener('mouseup', {}, window);
-        this.addMouseListener('mouseover');
-        this.addMouseListener('mouseout');
+        this._addListener(this._el, 'mousedown');
+        this._addListener(window, 'mousemove');
+        this._addListener(window, 'mouseup');
+        this._addListener(this._el, 'mouseover');
+        this._addListener(this._el, 'mouseout');
+        this._addListener(this._el, 'dblclick');
+        this._addListener(this._el, 'click');
 
-        this.addKeyboardListener('keydown');
-        this.addKeyboardListener('keyup');
-        this.addListener('wheel', MapWheelEvent, {passive: false});
-        this.addMouseListener('dblclick');
+        this._addListener(this._el, 'keydown', { capture: false });
+        this._addListener(this._el, 'keyup');
 
-        DOM.addEventListener(window, 'mouseup', e => e.preventDefault());
-        DOM.addEventListener(window, 'contextmenu', e => e.preventDefault());
+        this._addListener(this._el, 'wheel', {passive: false});
+        this._addListener(this._el, 'contextmenu');
+
         DOM.addEventListener(window, 'blur', () => this.stop());
+    }
+
+
+    _addListener(element, eventType, options, name_) {
+        const name = name_ || eventType;
+        DOM.addEventListener(element, eventType, e => this.processInputEvent(e, name), options);
     }
 
     _addDefaultHandlers() {
         const el = this._map.getCanvasContainer();
+        this.add('mapEvent', new MapEventHandler(this._map, this.options));
         const boxZoom = this._map.boxZoom = new BoxZoomHandler(this._map, this.options);
         this.add('boxZoom', boxZoom);
         this.add('tapZoom', new TapZoomHandler());
@@ -155,6 +164,7 @@ class HandlerManager {
         this.add('touchZoom', touchZoom, ['touchPan', 'touchRotate']);
         this.add('scrollzoom', new ScrollZoomHandler(this._map, this));
         this.add('keyboard', new KeyboardHandler());
+        this.add('blockableMapEvent', new BlockableMapEventHandler(this._map));
 
         this._map.dragRotate = new DragRotateHandler(this.options, mouseRotate, mousePitch);
         mouseRotate.disable();
@@ -173,32 +183,6 @@ class HandlerManager {
         this._handlers.push([handlerName, handler, allowed]);
         this._handlersById[handlerName] = handler;
         handler.enable();
-    }
-
-    addListener(eventType: string, mapEventClass?: Class<MapMouseEvent | MapTouchEvent | MapWheelEvent>, options?: Object, el: any) {
-        const listener = (e: *) => {
-            if (mapEventClass) {
-                if (!((eventType === 'mousemove' || eventType === 'touchmove') && this._map.dragPan.isActive())) {
-                    const mapEvent = new mapEventClass(eventType, this._map, e);
-                    this._map.fire(mapEvent);
-                    if (mapEvent.defaultPrevented) return;
-                }
-            }
-            this.processInputEvent(e);
-        };
-        DOM.addEventListener(el || this._el, eventType, listener, options);
-    }
-
-    addTouchListener(eventType: string, options?: Object) {
-        this.addListener(eventType, MapTouchEvent, options);
-    }
-
-    addMouseListener(eventType: string, options?: Object, el: any) {
-        this.addListener(eventType, MapMouseEvent, options, el);
-    }
-
-    addKeyboardListener(eventType: string, options?: Object) {
-        this.addListener(eventType, undefined, extend({capture: false}, options)); // No such thing as MapKeyboardEvent to fire
     }
 
     stop() {

@@ -58,6 +58,12 @@ export default class MousePitchHandler {
         this.reset();
     }
 
+    contextmenu(e: MouseEvent, point: Point) {
+        // prevent browser context menu when necessary; we don't allow it with pitching
+        // because we can't discern pitching gesture start from contextmenu on Mac
+        e.preventDefault();
+    }
+
     enable() {
         this._enabled = true;
     }

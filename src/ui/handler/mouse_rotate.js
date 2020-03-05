@@ -58,6 +58,12 @@ export default class MouseRotateHandler  {
         this.reset();
     }
 
+    contextmenu(e: MouseEvent, point: Point) {
+        // prevent browser context menu when necessary; we don't allow it with rotation
+        // because we can't discern rotation gesture start from contextmenu on Mac
+        e.preventDefault();
+    }
+
     enable() {
         this._enabled = true;
     }
