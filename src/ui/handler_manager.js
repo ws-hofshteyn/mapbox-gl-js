@@ -436,11 +436,23 @@ class HandlerManager {
         const stillMoving = isMoving(this.eventsInProgress);
         if ((wasMoving || nowMoving) && !stillMoving) {
             this._updatingCamera = true;
-            this.inertia._onMoveEnd(e, this._bearingChanged);
+            const inertialEase = this.inertia._onMoveEnd(e, this._bearingChanged);
+
+            const shouldSnapToNorth = bearing => -this.options.bearingSnap < bearing && bearing < this.options.bearingSnap;
+
+            if (inertialEase) {
+                if (shouldSnapToNorth(inertialEase.bearing || this._map.getBearing())) {
+                    inertialEase.bearing = 0;
+                }
+                this._map.easeTo(inertialEase, { originalEvent: e });
+            } else {
+                this._map.fire(new Event('moveend', { originalEvent: e }));
+                if (shouldSnapToNorth(this._map.getBearing())) {
+                    this._map.resetNorth();
+                }
+            }
             this._bearingChanged = false;
             this._updatingCamera = false;
-            // TODO inertia handles this
-            //this._fireEvent('moveend');
         }
 
     }

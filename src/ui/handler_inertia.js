@@ -79,10 +79,6 @@ export default class HandlerInertia {
     _onMoveEnd(originalEvent: *, bearingChanged) {
         this._drainInertiaBuffer();
         if (this._inertiaBuffer.length < 2) {
-            if (bearingChanged) {
-                this._map.resetNorth();
-            }
-            this._map.fire(new Event('moveend', { originalEvent }));
             return;
         }
 
@@ -125,11 +121,6 @@ export default class HandlerInertia {
         if (deltas.bearing) {
             const result = calculateEasing(deltas.bearing, duration, defaultBearingInertiaOptions);
             easeOptions.bearing = this._map.transform.bearing + clamp(result.amount, -179, 179);
-            if (bearingChanged) {
-                this._map.transform.bearing
-                easeOptions.bea
-                easeOptions.bearing = 0;
-            }
             extendDuration(easeOptions, result);
         }
 
@@ -145,9 +136,9 @@ export default class HandlerInertia {
         }
 
         this.clear();
-        this._map.easeTo(extend(easeOptions, {
+        return extend(easeOptions, {
             noMoveStart: true
-        }), { originalEvent });
+        }); 
 
     }
 }
