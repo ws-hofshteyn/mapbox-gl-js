@@ -99,6 +99,7 @@ class HandlerManager {
 
         this.inertia = new HandlerInertia(map, options);
         this.options = options;
+        this.previousActiveHandlers = {};
 
         // Track whether map is currently moving, to compute start/move/end events
         this.eventsInProgress = {};
@@ -126,7 +127,8 @@ class HandlerManager {
         this.addListener('wheel', MapWheelEvent, {passive: false});
         this.addMouseListener('dblclick');
 
-        DOM.addEventListener(window.document, 'contextmenu', e => e.preventDefault());
+        DOM.addEventListener(window, 'mouseup', e => e.preventDefault());
+        DOM.addEventListener(window, 'contextmenu', e => e.preventDefault());
         DOM.addEventListener(window, 'blur', () => this.stop());
     }
 
@@ -204,7 +206,7 @@ class HandlerManager {
         if (this._updatingCamera) return;
 
         for (const [name, handler] of this._handlers) {
-            handler.reset('stop');
+            handler.reset();
         }
         this.inertia.clear();
         this.fireEvents({});
@@ -276,12 +278,21 @@ class HandlerManager {
             }
         }
 
-        if (hasChange(mergedHandlerResult)) {
+        let handlersChanged = false;
+        for (const name in this.previousActiveHandlers) {
+            if (!activeHandlers[name]) {
+                handlersChanged = true;
+                break;
+            }
+        }
+        this.previousActiveHandlers = activeHandlers;
+
+        if (handlersChanged || hasChange(mergedHandlerResult)) {
             this._changes.push([mergedHandlerResult, eventsInProgress, e]);
             this.triggerRenderFrame();
         }
 
-        this.fireEvents({});
+
         this._updatingCamera = false;
     }
 
@@ -338,13 +349,12 @@ class HandlerManager {
 
     updateMapTransform(combinedResult: any, combinedEventsInProgress: Object, e?: InputEvent | RenderFrameEvent) {
         
-        if (!hasChange(combinedResult)) return;
+        if (!hasChange(combinedResult)) {
+            return this.fireEvents(combinedEventsInProgress);
+        }
+
         const map = this._map;
         const tr = map.transform;
-
-
-        // stop any ongoing camera animations (easeTo, flyTo)
-        map._stop(true);
 
         let { panDelta, zoomDelta, bearingDelta, pitchDelta, around, pinchAround } = combinedResult;
 
@@ -364,10 +374,13 @@ class HandlerManager {
             if (pitchDelta) easeOptions.pitch = tr.pitch + pitchDelta;
             if (around) easeOptions.around = map.unproject(around);
 
-            this.inertia.clear();
+            this.inertia.clear('ease clear', combinedResult);
             map.easeTo(easeOptions);
 
         } else {
+
+            // stop any ongoing camera animations (easeTo, flyTo)
+            map._stop(true);
 
             around = around || map.transform.centerPoint;
             const loc = tr.pointLocation(panDelta ? around.sub(panDelta) : around);
@@ -385,10 +398,12 @@ class HandlerManager {
 
 
     fireEvents(newEventsInProgress: { [string]: string }, e?: InputEvent) {
-        const wasMoving = !!Object.keys(this.eventsInProgress).length;
-        const isMoving = !!Object.keys(newEventsInProgress).length;
+        const isMoving = p => p.zoom || p.drag || p.pitch || p.rotate;
 
-        if (!wasMoving && isMoving) {
+        const wasMoving = isMoving(this.eventsInProgress);
+        const nowMoving = isMoving(newEventsInProgress);
+
+        if (!wasMoving && nowMoving) {
             this._fireEvent('movestart', e);
         }
 
@@ -400,7 +415,9 @@ class HandlerManager {
             this.eventsInProgress[eventName] = handlerName;
         }
 
-        if (isMoving) {
+        if (newEventsInProgress.rotate) this._bearingChanged = true;
+
+        if (nowMoving) {
             this._fireEvent('move', e);
         }
 
@@ -416,9 +433,12 @@ class HandlerManager {
             }
         }
 
-        const stillMoving = !!Object.keys(this.eventsInProgress).length;
-        if ((wasMoving || isMoving) && !stillMoving) {
-            this.inertia._onMoveEnd(e);
+        const stillMoving = isMoving(this.eventsInProgress);
+        if ((wasMoving || nowMoving) && !stillMoving) {
+            this._updatingCamera = true;
+            this.inertia._onMoveEnd(e, this._bearingChanged);
+            this._bearingChanged = false;
+            this._updatingCamera = false;
             // TODO inertia handles this
             //this._fireEvent('moveend');
         }

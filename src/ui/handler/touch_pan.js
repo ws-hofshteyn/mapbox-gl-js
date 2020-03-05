@@ -31,6 +31,7 @@ export default class TouchPanHandler {
     }
 
     touchmove(e: TouchEvent, points: Array<Point>) {
+        // TODO could this start a pan even if touchstart was prevented?
         return this._calculateTransform(e, points)
     }
 
