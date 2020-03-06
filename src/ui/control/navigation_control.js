@@ -2,8 +2,7 @@
 
 import DOM from '../../util/dom';
 import {extend, bindAll} from '../../util/util';
-import MouseRotateHandler from '../handler/mouse_rotate';
-import MousePitchHandler from '../handler/mouse_pitch';
+import {MouseRotateHandler, MousePitchHandler} from '../handler/mouse';
 
 import type Map from '../map';
 import {Event} from '../../util/evented';
