@@ -2,10 +2,12 @@
 
 import DOM from '../../util/dom';
 import {extend, bindAll} from '../../util/util';
-// TODO
-import DragRotateHandler from '../handler/old/drag_rotate';
+import MouseRotateHandler from '../handler/mouse_rotate';
+import MousePitchHandler from '../handler/mouse_pitch';
 
 import type Map from '../map';
+import {Event} from '../../util/evented';
+import {log} from '../handler/handler_util';
 
 type Options = {
     showCompass?: boolean,
@@ -105,10 +107,13 @@ class NavigationControl {
             this._map.on('rotate', this._rotateCompassArrow);
             this._rotateCompassArrow();
             // Temporary fix with clickTolerance (https://github.com/mapbox/mapbox-gl-js/pull/9015)
-            this._handler = new DragRotateHandler(map, {button: 'left', element: this._compass, clickTolerance: map.dragRotate._clickTolerance});
-            DOM.addEventListener(this._compass, 'mousedown', this._handler.onMouseDown);
-            DOM.addEventListener(this._compass, 'touchstart', this._handler.onMouseDown, {passive: false});
-            this._handler.enable();
+            //this._handler = new DragRotateHandler(map, {button: 'left', element: this._compass, clickTolerance: map.dragRotate._clickTolerance});
+
+            this.handler = new MouseRotateWrapper(this._map, this._compass, this.options.visualizePitch);
+
+                
+                
+            //DOM.addEventListener(this._compass, 'touchstart', this._handler.onMouseDown, {passive: false});
         }
         return this._container;
     }
@@ -143,6 +148,109 @@ class NavigationControl {
         const str = this._map._getUIString(`NavigationControl.${title}`);
         button.title = str;
         button.setAttribute('aria-label', str);
+    }
+}
+
+class MouseRotateWrapper {
+    constructor(map, element, pitch) {
+        this._clickTolerance = 10;
+        this.element = element;
+        this.mouseRotate = new MouseRotateHandler({ clickTolerance: map.dragRotate._clickTolerance});
+        if (pitch) this.mousePitch = new MousePitchHandler({ clickTolerance: map.dragRotate._clickTolerance});
+
+        this.eventMap = {
+            touchstart: 'mousedown',
+            touchmove: 'mousemove',
+            touchend: 'mouseup'
+        };
+
+        bindAll(['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend', 'reset'], this);
+        DOM.addEventListener(element, 'mousedown', this.mousedown);
+        DOM.addEventListener(element, 'touchstart', this.touchstart, { passive: false });
+        DOM.addEventListener(window, 'touchmove', this.touchmove);
+        DOM.addEventListener(window, 'touchend', this.touchend);
+        DOM.addEventListener(element, 'touchcancel', this.reset);
+    }
+
+    down(e, point) {
+        this.mouseRotate.mousedown(e, point);
+        if (this.mousePitch) this.mousePitch.mousedown(e, point);
+    }
+
+    move(e, point) {
+        const r = this.mouseRotate.mousemove(e, point);
+        if (r) map.setBearing(map.getBearing() + r.bearingDelta);
+        if (this.mousePitch) {
+            const p = this.mousePitch.mousemove(e, point);
+            if (p) map.setPitch(map.getPitch() + p.pitchDelta);
+        }
+    }
+
+    off() {
+        DOM.removeEventListener(element, 'mousedown', this.mousedown);
+        DOM.removeEventListener(element, 'touchstart', this.touchstart, { passive: false });
+        DOM.removeEventListener(element, 'touchmove', this.touchmove);
+        DOM.removeEventListener(element, 'touchend', this.touchend);
+        DOM.removeEventListener(element, 'touchcancel', this.reset);
+        this.offTemp();
+    }
+
+    offTemp() {
+        DOM.removeEventListener(window, 'mousemove', this.mousemove);
+        DOM.removeEventListener(window, 'mouseup', this.mouseup);
+    }
+
+    mousedown(e) {
+        this.down(extend({}, e, { ctrlKey: true}), DOM.mousePos(this.element, e));
+        DOM.addEventListener(window, 'mousemove', this.mousemove);
+        DOM.addEventListener(window, 'mouseup', this.mouseup);
+    }
+
+    mousemove(e) {
+        this.move(e, DOM.mousePos(this.element, e));
+    }
+
+    mouseup(e) {
+        const point = DOM.mousePos(this.element, e);
+        this.mouseRotate.mouseup(e, point);
+        if (this.mousePitch) this.mousePitch.mouseup(e, point);
+        this.offTemp();
+    }
+
+    touchstart(e) {
+        e.preventDefault();
+        if (e.targetTouches.length !== 1) {
+            this.reset();
+        } else {
+            this._startPos = this._lastPos = DOM.touchPos(this.element, e.targetTouches)[0];
+            this.down({ type: 'mousedown', button: 0, ctrlKey: true}, this._startPos);
+        }
+    }
+
+    touchmove(e) {
+        if (e.targetTouches.length !== 1) {
+            this.reset();
+        } else {
+            this._lastPos = DOM.touchPos(this.element, e.targetTouches)[0];
+            this.move({}, this._lastPos);
+        }
+    }
+
+    touchend(e) {
+        if (e.targetTouches.length === 0 &&
+            this._startPos &&
+            this._lastPos &&
+            this._startPos.dist(this._lastPos) < this._clickTolerance) {
+            this.element.click();
+        }
+        this.reset();
+    }
+
+    reset() {
+        this.mouseRotate.reset();
+        this.mousePitch.reset();
+        delete this._startPos;
+        delete this._endPos;
     }
 }
 

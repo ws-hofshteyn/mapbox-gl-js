@@ -1,7 +1,7 @@
 // @flow
 
-import type MouseRotateHandler from './mouse_rotate';
-import type MousePitchHandler from './mouse_pitch';
+import type MouseRotateHandler from './../mouse_rotate';
+import type MousePitchHandler from './../mouse_pitch';
 
 export default class DragRotateHandler {
 

@@ -1,7 +1,7 @@
 // @flow
 
-import type TouchZoomHandler from './touch_zoom';
-import type TouchRotateHandler from './touch_rotate';
+import type TouchZoomHandler from './../touch_zoom';
+import type TouchRotateHandler from './../touch_rotate';
 
 export default class TouchZoomRotateHandler {
 

@@ -1,10 +1,10 @@
 // @flow
 
-import {bezier} from '../../util/util';
-import type MousePanHandler from './mouse_pan';
-import type TouchPanHandler from './touch_pan';
+import {bezier} from '../../../util/util';
+import type MousePanHandler from './../mouse_pan';
+import type TouchPanHandler from './../touch_pan';
 
-import type InertiaOptions from '../handler_inertia';
+import type InertiaOptions from '../../handler_inertia';
 
 export type DragPanOptions = InertiaOptions;
 
