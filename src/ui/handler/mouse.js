@@ -46,6 +46,7 @@ class MouseHandler {
         this._notMoved = false;
         this._lastPoint = point;
 
+        // implemented by child class
         return this._move(lastPoint, point);
     }
 

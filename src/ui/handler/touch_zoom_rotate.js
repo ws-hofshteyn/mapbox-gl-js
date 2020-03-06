@@ -20,7 +20,6 @@ class TwoTouchHandler {
     reset() {
         this._active = false;
         delete this._firstTwoTouches;
-        delete this._lastPoints;
     }
 
     touchstart(e: TouchEvent, points: Array<Point>) {
@@ -31,19 +30,21 @@ class TwoTouchHandler {
             e.targetTouches[1].identifier
         ];
 
-        this._lastPoints = getTouchesById(e, points, this._firstTwoTouches);
-        this._start(this._lastPoints);
+        // implemented by child classes
+        this._start([points[0], points[1]]);
     }
 
     touchmove(e: TouchEvent, points: Array<Point>) {
         if (!this._firstTwoTouches) return;
 
-        const lastPoints = this._lastPoints;
-        const [a, b] = getTouchesById(e, points, this._firstTwoTouches);
+        const touchPoints = getTouchesById(e, points, this._firstTwoTouches);
+
+        const [a, b] = touchPoints;
         if (!a || !b) return;
-        this._lastPoints = [a, b];
         const pinchAround = this._aroundCenter ? null : a.add(b).div(2);
-        return this._move(this._lastPoints, lastPoints, pinchAround);
+
+        // implemented by child classes
+        return this._move(touchPoints, pinchAround, e);
 
     }
 
@@ -75,8 +76,34 @@ class TwoTouchHandler {
     }
 }
 
-const THRESHOLD = 20; // pixels along circumference of touch circle
+/* ZOOM */
 
+export class TouchZoomHandler extends TwoTouchHandler {
+
+    reset() {
+        super.reset();
+        delete this._distance;
+    }
+
+    _start(points) {
+        this._distance = points[0].dist(points[1]);
+    }
+
+    _move(points, pinchAround) {
+        this._active = true;
+        const lastDistance = this._distance;
+        this._distance = points[0].dist(points[1]);
+        return {
+            zoomDelta: Math.log(this._distance / lastDistance) / Math.LN2,
+            pinchAround
+        };
+    }
+}
+
+
+/* ROTATE */
+
+const THRESHOLD = 20; // pixels along circumference of touch circle
 
 function getBearingDelta(a, b) {
     return a.angleWith(b) * 180 / Math.PI;
@@ -89,25 +116,24 @@ export class TouchRotateHandler extends TwoTouchHandler {
         super.reset();
         delete this._minDiameter;
         delete this._startVector;
+        delete this._vector;
     }
 
     _start(points) {
-        this._startVector = points[0].sub(points[1]);
+        this._startVector = this._vector = points[0].sub(points[1]);
         this._minDiameter = points[0].dist(points[1]);
     }
 
-    _move(points, lastPoints, pinchAround) {
-        const vector = points[0].sub(points[1]);
+    _move(points, pinchAround) {
+        const lastVector = this._vector;
+        this._vector = points[0].sub(points[1]);
 
-        if (!this._active && this._isBelowThreshold(vector)) return;
+        if (!this._active && this._isBelowThreshold(this._vector)) return;
         this._active = true;
 
-        const lastVector = lastPoints[0].sub(lastPoints[1]);
-        const bearingDelta = getBearingDelta(vector, lastVector);
-
         return {
-            pinchAround,
-            bearingDelta
+            bearingDelta: getBearingDelta(this._vector, lastVector),
+            pinchAround
         };
     }
 
@@ -131,20 +157,64 @@ export class TouchRotateHandler extends TwoTouchHandler {
     }
 }
 
-export class TouchZoomHandler extends TwoTouchHandler {
+/* PITCH */
 
-    _start(points) {}
+function isVertical(vector) {
+    return Math.abs(vector.y) > Math.abs(vector.x);
+}
 
-    _move(points, lastPoints, pinchAround) {
+const ALLOWED_SINGLE_TOUCH_TIME = 100;
+
+export class TouchPitchHandler extends TwoTouchHandler {
+
+    reset() {
+        super.reset();
+        this._valid = undefined;
+        delete this._firstMove;
+        delete this._lastPoints;
+    }
+
+    _start(points) {
+        this._lastPoints = points;
+        if (isVertical(points[0].sub(points[1]))) {
+            // fingers are more horizontal than vertical
+            this._valid = false;
+            return;
+        }
+    }
+
+    _move(points, center, e) {
+        const vectorA = points[0].sub(this._lastPoints[0]);
+        const vectorB = points[1].sub(this._lastPoints[1]);
+
+        this._valid = this.gestureBeginsVertically(vectorA, vectorB, e.timeStamp);
+        if (!this._valid) return;
+
+        this._lastPoints = points;
         this._active = true;
-
-        const distance = points[0].dist(points[1]);
-        const lastDistance = lastPoints[0].dist(lastPoints[1]);
-        const zoomDelta = Math.log(distance / lastDistance) / Math.LN2;
-
         return {
-            pinchAround,
-            zoomDelta
+            pitchDelta: ((vectorA.y + vectorB.y) / 2) * -0.5
         };
+    }
+
+    gestureBeginsVertically(vectorA: Point, vectorB: Point, timeStamp: number) {
+        if (this._valid !== undefined) return this._valid;
+
+        if (vectorA.mag() === 0 || vectorB.mag() === 0) {
+
+            if (this._firstMove === undefined) {
+                this._firstMove = timeStamp;
+            }
+
+            if (timeStamp - this._firstMove < ALLOWED_SINGLE_TOUCH_TIME) { 
+                // still waiting for a movement from the second finger
+                return undefined;
+            } else {
+                return false;
+            }
+        }
+
+        const isSameDirection = vectorA.y > 0 === vectorB.y > 0;
+        return isVertical(vectorA) && isVertical(vectorB) && isSameDirection;
     }
 }
