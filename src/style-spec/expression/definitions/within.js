@@ -164,11 +164,11 @@ function getTilePolygons(coordinates, bbox, canonical) {
 
 function updatePoint(p, bbox, polyBBox, worldSize) {
     if (p[0] < polyBBox[0] || p[0] > polyBBox[2]) {
-        let shift = (p[0] - polyBBox[0] > worldSize / 2) ? -worldSize : (polyBBox[0] - p[0] > worldSize / 2) ? worldSize : 0;
-        if (shift === 0) {
-            shift = (p[0] - polyBBox[2] > worldSize / 2) ? -worldSize : (polyBBox[2] - p[0] > worldSize / 2) ? worldSize : 0;
-        }
-        p[0] += shift;
+        const halfWorldSize = worldSize * 0.5;
+        const d0 = Math.max(p[0] - polyBBox[0], p[0] - polyBBox[2]);
+        const d1 = Math.max(polyBBox[0] - p[0], polyBBox[2] - p[0]);
+        if (d0 > halfWorldSize) p[0] -= Math.round(d0 / halfWorldSize) * halfWorldSize;
+        if (d1 > halfWorldSize) p[0] += Math.round(d1 / halfWorldSize) * halfWorldSize;
     }
     updateBBox(bbox, p);
 }
