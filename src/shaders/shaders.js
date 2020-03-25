@@ -82,10 +82,32 @@ export const symbolIcon = compile(symbolIconFrag, symbolIconVert);
 export const symbolSDF = compile(symbolSDFFrag, symbolSDFVert);
 export const symbolTextAndIcon = compile(symbolTextAndIconFrag, symbolTextAndIconVert);
 
+export const shaderMetaData = {
+    line: 2,
+    lineGradient: 2,
+    linePattern: 2,
+    lineSDF: 2,
+    clippingMask: 1
+};
+
 // Expand #pragmas to #ifdefs.
 
 function compile(fragmentSource, vertexSource) {
     const re = /#pragma mapbox: ([\w]+) ([\w]+) ([\w]+) ([\w]+)/g;
+    const attributeRegex = /attribute ([\w]+) ([\w]+);/g;
+    // const uniformRegex = /uniform ([\w]+) ([\w]+);/g;
+    
+    let staticAttributes = {};
+    // let staticUniforms = {};
+
+    const start = performance.now();
+    staticAttributes = vertexSource.match(attributeRegex);
+    console.log(`attr regex time: ${performance.now() - start}`);
+    // staticUniforms = vertexSource.match(uniformRegex);
+
+    // for (let attr in vertexSource.match(attributeRegex)){
+    //     const 
+    // }
 
     const fragmentPragmas = {};
 
@@ -176,5 +198,5 @@ uniform ${precision} ${type} u_${name};
         }
     });
 
-    return {fragmentSource, vertexSource};
+    return {fragmentSource, vertexSource, staticAttributes};
 }

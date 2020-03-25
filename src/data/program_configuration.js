@@ -507,6 +507,17 @@ export default class ProgramConfiguration {
         return result;
     }
 
+    attributeCt(): number {
+        let ct = 0;
+        for (const property in this.binders) {
+            const binder = this.binders[property];
+            if (binder instanceof CrossFadedCompositeBinder || binder instanceof SourceExpressionBinder || binder instanceof CompositeExpressionBinder) {
+                ct += binder.paintVertexAttributes.length;
+            }
+        }
+        return ct;
+    }
+
     getPaintVertexBuffers(): Array<VertexBuffer> {
         return this._buffers;
     }

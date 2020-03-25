@@ -1,6 +1,6 @@
 // @flow
 
-import {prelude} from '../shaders';
+import {prelude, shaderMetaData} from '../shaders';
 import assert from 'assert';
 import ProgramConfiguration from '../data/program_configuration';
 import VertexArrayObject from './vertex_array_object';
@@ -30,7 +30,9 @@ class Program<Us: UniformBindings> {
     failedToCreate: boolean;
 
     constructor(context: Context,
-                source: {fragmentSource: string, vertexSource: string},
+                name: string,
+                source: {fragmentSource: string, vertexSource: string, staticAttributes: Array<string>},
+                // source: {fragmentSource: string, vertexSource: string},
                 configuration: ?ProgramConfiguration,
                 fixedUniforms: (Context, UniformLocations) => Us,
                 showOverdrawInspector: boolean) {
@@ -76,7 +78,16 @@ class Program<Us: UniformBindings> {
         gl.linkProgram(this.program);
         assert(gl.getProgramParameter(this.program, gl.LINK_STATUS), (gl.getProgramInfoLog(this.program): any));
 
-        this.numAttributes = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
+        let start = performance.now();
+        // const fixedAttributes = shaderMetaData[name];
+        const fixedAttributes = source.staticAttributes.length;
+        const variableAttributes = configuration ? configuration.attributeCt() : 0;
+        this.numAttributes = fixedAttributes + variableAttributes;//gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
+        console.log(`attr time: ${performance.now() - start}, num: ${this.numAttributes}`);
+
+        start = performance.now();
+        const count = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
+        console.log(`attr time using getProgramParameter: ${performance.now() - start}, num: ${count}`);
 
         this.attributes = {};
         const uniformLocations = {};
