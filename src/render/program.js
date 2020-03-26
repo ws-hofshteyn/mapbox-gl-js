@@ -21,6 +21,16 @@ export type DrawMode =
     | $PropertyType<WebGLRenderingContext, 'TRIANGLES'>
     | $PropertyType<WebGLRenderingContext, 'LINE_STRIP'>;
 
+function getTokenizedAttributes (attrArray: Array<string>) {
+    const result = [];
+
+    for (let i = 0; i < attrArray.length; i++) {
+        const token = attrArray[i].split(' ');
+        result.push({name: token[2], type: token[1]});
+    }
+    return result;
+}
+
 class Program<Us: UniformBindings> {
     program: WebGLProgram;
     attributes: {[_: string]: number};
@@ -38,6 +48,11 @@ class Program<Us: UniformBindings> {
                 showOverdrawInspector: boolean) {
         const gl = context.gl;
         this.program = gl.createProgram();
+
+        // get All shader attribute info
+        const staticAttrInfo = getTokenizedAttributes(source.staticAttributes);
+        const dynamicAttrInfo = configuration ? configuration.getAttributes() : [];
+        const allAttrInfo = staticAttrInfo.concat(dynamicAttrInfo);
 
         const defines = configuration ? configuration.defines() : [];
         if (showOverdrawInspector) {
@@ -70,38 +85,27 @@ class Program<Us: UniformBindings> {
         // ProgramInterface so that we don't dynamically link an unused
         // attribute at position 0, which can cause rendering to fail for an
         // entire layer (see #4607, #4728)
-        const layoutAttributes = configuration ? configuration.layoutAttributes : [];
-        for (let i = 0; i < layoutAttributes.length; i++) {
-            gl.bindAttribLocation(this.program, i, layoutAttributes[i].name);
+        let cnt = 0;
+        this.attributes = {};
+        while (cnt < allAttrInfo.length) {
+            gl.bindAttribLocation(this.program, cnt, allAttrInfo[cnt].name);
+            this.attributes[allAttrInfo[cnt].name] = cnt;
+            cnt++;
         }
 
         gl.linkProgram(this.program);
         assert(gl.getProgramParameter(this.program, gl.LINK_STATUS), (gl.getProgramInfoLog(this.program): any));
-
-        let start = performance.now();
-        // const fixedAttributes = shaderMetaData[name];
-        const fixedAttributes = source.staticAttributes.length;
-        const variableAttributes = configuration ? configuration.attributeCt() : 0;
-        this.numAttributes = fixedAttributes + variableAttributes;//gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
-        console.log(`attr time: ${performance.now() - start}, num: ${this.numAttributes}`);
-
-        start = performance.now();
-        const count = gl.getProgramParameter(this.program, gl.ACTIVE_ATTRIBUTES);
-        console.log(`attr time using getProgramParameter: ${performance.now() - start}, num: ${count}`);
-
-        this.attributes = {};
+        this.numAttributes = allAttrInfo.length;
+        
         const uniformLocations = {};
-
-        for (let i = 0; i < this.numAttributes; i++) {
-            const attribute = gl.getActiveAttrib(this.program, i);
-            if (attribute) {
-                this.attributes[attribute.name] = gl.getAttribLocation(this.program, attribute.name);
-            }
-        }
-
+        const start = performance.now();
         const numUniforms = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
+        console.log(`getProgramParameter for active uniforms: ${performance.now() - start}`);
+        
         for (let i = 0; i < numUniforms; i++) {
+            // start = performance.now();
             const uniform = gl.getActiveUniform(this.program, i);
+            // console.log(`getActiveUniform for active uniforms: ${performance.now() - start}`);
             if (uniform) {
                 uniformLocations[uniform.name] = gl.getUniformLocation(this.program, uniform.name);
             }

@@ -42,6 +42,11 @@ export type BinderUniform = {
     binding: Uniform<any>
 };
 
+export type BinderAttributes = {
+    name: string,
+    type: string,
+};
+
 function packColor(color: Color): [number, number] {
     return [
         packUint8ToFloat(255 * color.r, 255 * color.g),
@@ -507,15 +512,19 @@ export default class ProgramConfiguration {
         return result;
     }
 
-    attributeCt(): number {
-        let ct = 0;
+    getAttributes(): Array<BinderAttributes> {
+        const result = [];
         for (const property in this.binders) {
             const binder = this.binders[property];
             if (binder instanceof CrossFadedCompositeBinder || binder instanceof SourceExpressionBinder || binder instanceof CompositeExpressionBinder) {
-                ct += binder.paintVertexAttributes.length;
+                for (let i = 0; i < binder.paintVertexAttributes.length; i++) {
+                    result.push({
+                        name: binder.paintVertexAttributes[i].name,
+                        type: binder.paintVertexAttributes[i].type.toString()});
+                }
             }
         }
-        return ct;
+        return result;
     }
 
     getPaintVertexBuffers(): Array<VertexBuffer> {
