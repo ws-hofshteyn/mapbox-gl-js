@@ -162,9 +162,8 @@ function getTilePolygons(coordinates, bbox, canonical) {
     return polygons;
 }
 
-function updatePoint(p, bbox, polyBBox, worldSize) {
+function updatePoint(p, bbox, polyBBox, halfWorldSize) {
     if (p[0] < polyBBox[0] || p[0] > polyBBox[2]) {
-        const halfWorldSize = worldSize * 0.5;
         const d0 = Math.max(p[0] - polyBBox[0], p[0] - polyBBox[2]);
         const d1 = Math.max(polyBBox[0] - p[0], polyBBox[2] - p[0]);
         if (d0 > halfWorldSize) p[0] -= Math.round(d0 / halfWorldSize) * halfWorldSize;
@@ -185,7 +184,7 @@ function getTilePoints(geometry, pointBBox, polyBBox, canonical) {
     for (const points of geometry) {
         for (const point of points) {
             const p = [point.x + shifts[0], point.y + shifts[1]];
-            updatePoint(p, pointBBox, polyBBox, worldSize);
+            updatePoint(p, pointBBox, polyBBox, worldSize * 0.5);
             tilePoints.push(p);
         }
     }
@@ -209,7 +208,7 @@ function getTileLines(geometry, lineBBox, polyBBox, canonical) {
         resetBBox(lineBBox);
         for (const line of tileLines) {
             for (const p of line) {
-                updatePoint(p, lineBBox, polyBBox, worldSize);
+                updatePoint(p, lineBBox, polyBBox, worldSize * 0.5);
             }
         }
     }
