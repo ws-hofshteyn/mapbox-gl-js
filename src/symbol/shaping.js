@@ -749,10 +749,10 @@ export type PositionedIcon = {
     collisionPadding?: [number, number, number, number]
 };
 
-function shapeIcon(image: ImagePosition, iconOffset: [number, number], iconAnchor: SymbolAnchor): PositionedIcon {
+function shapeIcon(image: ImagePosition, iconOffset: [number, number], iconDescOffset: [number, number], iconAnchor: SymbolAnchor): PositionedIcon {
     const {horizontalAlign, verticalAlign} = getAnchorAlignment(iconAnchor);
-    const dx = iconOffset[0];
-    const dy = iconOffset[1];
+    const dx = iconOffset[0] - iconDescOffset[0];
+    const dy = iconOffset[1] - iconDescOffset[1];
     const x1 = dx - image.displaySize[0] * horizontalAlign;
     const x2 = x1 + image.displaySize[0];
     const y1 = dy - image.displaySize[1] * verticalAlign;

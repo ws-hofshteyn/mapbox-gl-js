@@ -14,6 +14,8 @@ export type StyleImageData = {
 export type StyleImageMetadata = {
     pixelRatio: number,
     sdf: boolean,
+    anchorX?: number,
+    anchorY?: number,
     stretchX?: Array<[number, number]>,
     stretchY?: Array<[number, number]>,
     content?: [number, number, number, number]

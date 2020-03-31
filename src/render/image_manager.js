@@ -190,6 +190,8 @@ class ImageManager extends Evented {
                     data: image.data.clone(),
                     pixelRatio: image.pixelRatio,
                     sdf: image.sdf,
+                    anchorX: image.anchor_x,
+                    anchorY: image.anchor_y,
                     version: image.version,
                     stretchX: image.stretchX,
                     stretchY: image.stretchY,
